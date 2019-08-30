@@ -1,3 +1,4 @@
+
 #include <process.h>
 #include <stdio.h>
 #include "HttpPost.h"
@@ -6,6 +7,7 @@
 #include "ServerApi.h"
 
 void Processor::Shutdown(void) {
+    HttpPost::Instance().Stop();
     ShowStatus();
 
 #ifdef _LICENSE_VERIFICATION_
@@ -13,8 +15,7 @@ void Processor::Shutdown(void) {
 #endif  // !_LICENSE_VERIFICATION_
 }
 
-Processor::Processor() : m_reinitialize_flag(0), m_disable_plugin(0) {
-}
+Processor::Processor() : m_reinitialize_flag(0), m_disable_plugin(0) {}
 
 Processor& Processor::Instance() {
     static Processor _instance;
@@ -37,109 +38,40 @@ void Processor::Initialize() {
 #endif  // !_LICENSE_VERIFICATION_
 }
 
-void Processor::OrderUpdated(TradeRecord* trade, UserInfo* user, const int mode) {
-    FUNC_WARDER;
-
-    //--- reinitialize if configuration changed
-    if (InterlockedExchange(&m_reinitialize_flag, 0) != 0) {
-        Initialize();
-    }
-
-    if (m_disable_plugin) {
-        return;
-    }
-
-#ifdef _LICENSE_VERIFICATION_
-    if (!LicenseService::Instance().IsLicenseValid()) {
-        LOG("OrderMonitor: invalid license.");
-        return;
-    }
-#endif  // !_LICENSE_VERIFICATION_
-
-    if (trade->cmd >= OP_BALANCE) {
+void Processor::OnStopoutsApply(const UserInfo* user, const ConGroup* group, const ConSymbol* symbol, TradeRecord* stopout) {
+    if (!CommonCheck()) {
         return;
     }
 
     boost::property_tree::ptree notice;
-    notice.put("order", trade->order);
     notice.put("user", user->login);
-    switch (mode) {
-        case UPDATE_NORMAL:
-            if (trade->cmd == OP_BUY || trade->cmd == OP_SELL) {
-                notice.put("mode", "update");
-            } else {
-                notice.put("mode", "p_update");
-            }
-            break;
-        case UPDATE_ACTIVATE:
-            notice.put("mode", "active");
-            break;
-        case UPDATE_CLOSE:
-            notice.put("mode", "close");
-            break;
-        case UPDATE_DELETE:
-            notice.put("mode", "p_delete");
-            break;
-        default:
-            notice.put("error", "Unknown");
-            break;
-    }
-    HttpPost::Instance().AddNotice(notice);
+    notice.put("order", stopout->order);
+    notice.put("mode", "STOPOUT");
+    HttpPost::Instance().PostNotice(notice);
 }
 
-void Processor::OrderAdded(TradeRecord* trade, const UserInfo* user, const ConSymbol* symbol, const int mode) {
-    FUNC_WARDER;
-
-    //--- reinitialize if configuration changed
-    if (InterlockedExchange(&m_reinitialize_flag, 0) != 0) {
-        Initialize();
-    }
-
-    if (m_disable_plugin) {
+void Processor::OnStopsApply(const UserInfo* user, const ConGroup* group, const ConSymbol* symbol, TradeRecord* trade,
+                             const int isTP) {
+    if (!CommonCheck()) {
         return;
     }
-
-#ifdef _LICENSE_VERIFICATION_
-    if (!LicenseService::Instance().IsLicenseValid()) {
-        return;
-    }
-#endif  // !_LICENSE_VERIFICATION_
-
-    if (trade->cmd >= OP_BALANCE) {
-        return;
-    }
-
-    // OP_BUY_LIMIT, OP_SELL_LIMIT, OP_BUY_STOP, OP_SELL_STOP
 
     boost::property_tree::ptree notice;
-    notice.put("order", trade->order);
     notice.put("user", user->login);
-    switch (mode) {
-        case OPEN_NEW:
-            if (trade->cmd == OP_BUY || trade->cmd == OP_SELL) {
-                notice.put("mode", "open");
-            } else {
-                notice.put("mode", "p_open");
-            }
-            break;
-        case OPEN_CLOSE:
-            notice.put("mode", "OPEN_CLOSE");
-            break;
-        case OPEN_RESTORE:
-            notice.put("mode", "OPEN_RESTORE");
-            break;
-        case OPEN_API:
-            notice.put("mode", "OPEN_API");
-            break;
-        case OPEN_ROLLOVER:
-            notice.put("mode", "OPEN_ROLLOVER");
-        default:
-            notice.put("error", "Unknown");
-            break;
-    }
-    HttpPost::Instance().AddNotice(notice);
+    notice.put("order", trade->order);
+    notice.put("mode", isTP ? "TP" : "SL");
+    HttpPost::Instance().PostNotice(notice);
 }
 
-void Processor::OrderClosedBy(TradeRecord* ftrade, TradeRecord* strade, TradeRecord* remaind, ConSymbol* sec, UserInfo* user) {
-    // Do nothing
+void Processor::OnPendingsApply(const UserInfo* user, const ConGroup* group, const ConSymbol* symbol,
+                                const TradeRecord* pending, TradeRecord* trade) {
+    if (!CommonCheck()) {
+        return;
+    }
+
+    boost::property_tree::ptree notice;
+    notice.put("user", user->login);
+    notice.put("order", pending->order);
+    notice.put("mode", "ACTIVATION");
+    HttpPost::Instance().PostNotice(notice);
 }

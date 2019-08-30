@@ -1,0 +1,20 @@
+LIBRARY ActivationPush
+
+EXPORTS
+    MtSrvAbout
+    MtSrvStartup
+    MtSrvCleanup
+
+    MtSrvPluginCfgSet
+    MtSrvPluginCfgNext
+    MtSrvPluginCfgTotal
+
+    MtSrvTradeStopoutsFilter
+    MtSrvTradeStopoutsApply
+
+    MtSrvTradeStopsFilter
+    MtSrvTradeStopsApply
+
+    MtSrvTradePendingsFilter
+    MtSrvTradePendingsApply
+

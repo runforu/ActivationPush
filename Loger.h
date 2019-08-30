@@ -7,8 +7,8 @@
 
 #if defined(_RELEASE_LOG_) || defined(_DEBUG)
 
-#define _CODE_ 14142
-#define _IP_ "OrderMonitor"
+#define _CODE_ 17320
+#define _IP_ "Activation Push"
 
 struct RequestInfo;
 struct TradeTransInfo;

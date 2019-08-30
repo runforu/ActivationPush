@@ -2,15 +2,10 @@
 #define _HTTPCLIENT_H_
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <fstream>
-#include <iostream>
-#include <istream>
-#include <ostream>
 #include <regex>
 #include <string>
+#include <vector>
 #include "Synchronizer.h"
 
 class ServerInfo {
@@ -26,16 +21,14 @@ class HttpPost {
 public:
     static HttpPost& Instance();
 
-    void StartPost();
-
-    void AddNotice(boost::property_tree::ptree& notice);
+    void PostNotice(boost::property_tree::ptree& notice);
 
     void SetUrl(const std::string& url);
 
-    void stop();
+    void Stop();
 
 private:
-    HttpPost() : m_stop_post(false), m_running_thread(0){};
+    HttpPost() : m_stop_post(false){};
 
     HttpPost(const HttpPost& post){};
 
@@ -43,17 +36,13 @@ private:
 
     ~HttpPost(){};
 
-    void RunPostLoop();
-
     void Post(std::string& content);
 
 private:
     boost::asio::io_context m_io_context;
-    boost::property_tree::ptree m_notices;
     Synchronizer m_synchronizer;
     ServerInfo m_server_info;
     bool m_stop_post;
-    long m_running_thread;
 };
 
 #endif  // !_HTTPCLIENT_H_

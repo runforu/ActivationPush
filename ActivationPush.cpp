@@ -1,10 +1,11 @@
-#include "HttpPost.h"
+#include <winsock2.h>
 #include "Config.h"
+#include "HttpPost.h"
 #include "Loger.h"
 #include "Processor.h"
 #include "ServerApi.h"
 
-PluginInfo ExtPluginInfo = {"Order Monitor", 1, "DH Copyright.", {0}};
+PluginInfo ExtPluginInfo = {"Activation Push", 1, "DH Copyright.", {0}};
 
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID /*lpReserved*/) {
     switch (ul_reason_for_call) {
@@ -49,13 +50,10 @@ int APIENTRY MtSrvStartup(CServerInterface* server) {
     //--- initialize dealer helper
     Processor::Instance().Initialize();
 
-    HttpPost::Instance().StartPost();
-
     return (TRUE);
 }
 
 void APIENTRY MtSrvCleanup() {
-    HttpPost::Instance().stop();
     Processor::Instance().Shutdown();
 }
 
@@ -76,10 +74,33 @@ int APIENTRY MtSrvPluginCfgTotal() {
     return Config::Instance().Total();
 }
 
-void APIENTRY MtSrvTradesUpdate(TradeRecord* trade, UserInfo* user, const int mode) {
-    Processor::Instance().OrderUpdated(trade, user, mode);
+int APIENTRY MtSrvTradeStopoutsFilter(const ConGroup* group, const ConSymbol* symbol, const int login, const double equity,
+                                      const double margin) {
+    return RET_OK;
 }
 
-void APIENTRY MtSrvTradesAddExt(TradeRecord* trade, const UserInfo* user, const ConSymbol* symbol, const int mode) {
-    Processor::Instance().OrderAdded(trade, user, symbol, mode);
+int APIENTRY MtSrvTradeStopoutsApply(const UserInfo* user, const ConGroup* group, const ConSymbol* symbol,
+                                     TradeRecord* stopout) {
+    Processor::Instance().OnStopoutsApply(user, group, symbol, stopout);
+    return RET_OK;
+}
+
+int APIENTRY MtSrvTradeStopsFilter(const ConGroup* group, const ConSymbol* symbol, const TradeRecord* trade) {
+    return RET_OK;
+}
+
+int APIENTRY MtSrvTradeStopsApply(const UserInfo* user, const ConGroup* group, const ConSymbol* symbol, TradeRecord* trade,
+                                  const int isTP) {
+    Processor::Instance().OnStopsApply(user, group, symbol, trade, isTP);
+    return RET_OK;
+}
+
+int APIENTRY MtSrvTradePendingsFilter(const ConGroup* group, const ConSymbol* symbol, const TradeRecord* trade) {
+    return RET_OK;
+}
+
+int APIENTRY MtSrvTradePendingsApply(const UserInfo* user, const ConGroup* group, const ConSymbol* symbol,
+                                     const TradeRecord* pending, TradeRecord* trade) {
+    Processor::Instance().OnPendingsApply(user, group, symbol, pending, trade);
+    return RET_OK;
 }
